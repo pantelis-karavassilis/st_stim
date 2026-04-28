@@ -143,9 +143,20 @@ async function hpSend() {
       })
     });
 
-    var data  = await resp.json();
-    var reply = data.content[0].text;
+    var data = await resp.json();
 
+    if (!resp.ok) {
+      if (tr) tr.className = 'hp-typing-row';
+      hpAppend('ai', 'API error ' + resp.status + ': ' + JSON.stringify(data));
+      return;
+    }
+    if (!data.content || !data.content[0]) {
+      if (tr) tr.className = 'hp-typing-row';
+      hpAppend('ai', 'Unexpected response: ' + JSON.stringify(data));
+      return;
+    }
+
+    var reply = data.content[0].text;
     HP_MSGS.push({ role: 'assistant', content: reply, elapsed: hpElapsed() });
     if (tr) tr.className = 'hp-typing-row';
     hpAppend('ai', reply);
@@ -153,7 +164,7 @@ async function hpSend() {
 
   } catch(e) {
     if (tr) tr.className = 'hp-typing-row';
-    hpAppend('ai', 'An error occurred. Please try again.');
+    hpAppend('ai', 'Error: ' + e.message);
   } finally {
     HP_BUSY = false;
     if (btn) btn.disabled = false;
