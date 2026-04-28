@@ -49,9 +49,7 @@ body{background:#fff}
     </div>
   </div>
   <div class="hp-input-area">
-    <textarea class="hp-textarea" id="hp-textarea" placeholder="Type your message here..." rows="1"
-      onkeydown="if(event.key='Enter'&&!event.shiftKey){event.preventDefault();hpSend();}"
-      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px';"></textarea>
+    <textarea class="hp-textarea" id="hp-textarea" placeholder="Type your message here..." rows="1"></textarea>
     <button class="hp-send-btn" id="hp-send-btn" onclick="hpSend()">Send</button>
   </div>
 </div>
@@ -85,9 +83,23 @@ var HP_BUSY  = false;
 })();
 
 // Disable input until prompt is loaded
-document.getElementById('hp-send-btn').disabled = true;
-document.getElementById('hp-textarea').disabled = true;
-document.getElementById('hp-textarea').placeholder = 'Loading assistant...';
+var _btn = document.getElementById('hp-send-btn');
+var _inp = document.getElementById('hp-textarea');
+_btn.disabled = true;
+_inp.disabled = true;
+_inp.placeholder = 'Loading assistant...';
+
+// Attach event listeners properly (not inline) to avoid triggering send on resize
+_inp.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    hpSend();
+  }
+});
+_inp.addEventListener('input', function() {
+  _inp.style.height = 'auto';
+  _inp.style.height = Math.min(_inp.scrollHeight, 100) + 'px';
+});
 
 function hpElapsed() { return Math.round((Date.now() - HP_START) / 1000); }
 
