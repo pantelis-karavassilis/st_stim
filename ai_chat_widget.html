@@ -138,8 +138,10 @@ async function hpSend() {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        system:   HP_SP,
-        messages: apiMsgs
+        model:      'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system:     HP_SP,
+        messages:   apiMsgs
       })
     });
 
@@ -181,3 +183,30 @@ setInterval(hpSaveToQualtrics, 30000);
 </script>
 </body>
 </html>
+
+<!-- DEBUG SECTION — remove before final deployment -->
+<div style="margin:10px 20px;font-family:monospace;font-size:12px;">
+  <button onclick="hpDebugTest()" style="padding:6px 12px;background:#555;color:#fff;border:none;cursor:pointer;">Test Proxy Connection</button>
+  <pre id="hp-debug-out" style="margin-top:8px;padding:8px;background:#f5f5f5;border:1px solid #ccc;white-space:pre-wrap;word-break:break-all;min-height:40px;"></pre>
+</div>
+
+<script>
+async function hpDebugTest() {
+  var out = document.getElementById('hp-debug-out');
+  out.textContent = 'Sending test request to: ' + PROXY_URL + ' ...';
+  try {
+    var resp = await fetch(PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system: 'You are a helpful assistant.',
+        messages: [{ role: 'user', content: 'Say the word PONG and nothing else.' }]
+      })
+    });
+    var text = await resp.text();
+    out.textContent = 'HTTP Status: ' + resp.status + '\n\nResponse body:\n' + text.substring(0, 800);
+  } catch(e) {
+    out.textContent = 'Fetch FAILED\nError type: ' + e.name + '\nMessage: ' + e.message;
+  }
+}
+</script>
