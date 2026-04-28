@@ -32,7 +32,6 @@ body{background:#fff}
 </style>
 </head>
 <body>
-
 <div id="hp-study-wrap">
   <div class="hp-top">AI Assistant</div>
   <div class="hp-chat-win" id="hp-chat-win">
@@ -51,28 +50,46 @@ body{background:#fff}
   </div>
   <div class="hp-input-area">
     <textarea class="hp-textarea" id="hp-textarea" placeholder="Type your message here..." rows="1"
-      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();hpSend();}"
+      onkeydown="if(event.key='Enter'&&!event.shiftKey){event.preventDefault();hpSend();}"
       oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px';"></textarea>
     <button class="hp-send-btn" id="hp-send-btn" onclick="hpSend()">Send</button>
   </div>
 </div>
 
 <script>
-// ── Config ─────────────────────────────────────────────────────────────────
-var PROXY_URL = 'https://hp-proxy.vercel.app/api/chat';
+var PROXY_URL   = 'https://hp-proxy.vercel.app/api/chat';
+var PROMPT_URL  = 'https://pantelis-karavassilis.github.io/st_stim/system_prompt.txt';
 
-var HP_SP = "You help someone choose wireless headphones. Use ONLY these 20 options. Never suggest other products.\n1.Bose QC Ultra 2nd Gen $449|ANC:Y|Transp:Y|Spatial:Y|Comfort:10h|Battery:30h|WearDetect:Y|Multipoint:Y|Weight:265g|EQ:Y|Passive:N|Case:Y\n2.Bose QC Ultra $429|ANC:Y|Transp:Y|Spatial:Y|Comfort:10h|Battery:24h|WearDetect:Y|Multipoint:Y|Weight:252g|EQ:Y|Passive:N|Case:Y\n3.Sony WH-1000XM6 $460|ANC:Y|Transp:Y|Spatial:Y|Comfort:7h|Battery:30h|WearDetect:Y|Multipoint:Y|Weight:255g|EQ:Y|Passive:Y|Case:Y\n4.Sennheiser Momentum 4 $450|ANC:Y|Transp:Y|Spatial:N|Comfort:10h|Battery:60h|WearDetect:Y|Multipoint:Y|Weight:293g|EQ:Y|Passive:Y|Case:Y\n5.Sony WH-1000XM5 $400|ANC:Y|Transp:Y|Spatial:Y|Comfort:6h|Battery:30h|WearDetect:Y|Multipoint:Y|Weight:244g|EQ:Y|Passive:Y|Case:Y\n6.Sony WH-1000XM4 $350|ANC:Y|Transp:Y|Spatial:Y|Comfort:8h|Battery:30h|WearDetect:Y|Multipoint:Y|Weight:250g|EQ:Y|Passive:Y|Case:Y\n7.Bose QuietComfort $359|ANC:Y|Transp:Y|Spatial:Y|Comfort:9h|Battery:24h|WearDetect:Y|Multipoint:Y|Weight:235g|EQ:Y|Passive:Y|Case:Y\n8.Focal Bathys $699|ANC:Y|Transp:Y|Spatial:N|Comfort:4h|Battery:30h|WearDetect:N|Multipoint:Y|Weight:359g|EQ:Y|Passive:N|Case:Y\n9.Apple AirPods Max $549|ANC:Y|Transp:Y|Spatial:Y|Comfort:4.5h|Battery:20h|WearDetect:Y|Multipoint:Y|Weight:386g|EQ:N|Passive:N|Case:Sleeve\n10.1More SonoFlow $90|ANC:Y|Transp:Y|Spatial:N|Comfort:7.5h|Battery:50h|WearDetect:N|Multipoint:Y|Weight:255g|EQ:Y|Passive:Y|Case:Y\n11.JBL Tour One M3 $450|ANC:Y|Transp:Y|Spatial:Y|Comfort:4.5h|Battery:40h|WearDetect:Y|Multipoint:Y|Weight:277g|EQ:Y|Passive:N|Case:Y\n12.Soundcore Space Q45 $150|ANC:Y|Transp:Y|Spatial:N|Comfort:6.5h|Battery:50h|WearDetect:Y|Multipoint:Y|Weight:294g|EQ:Y|Passive:Y|Case:Y\n13.Tozo HT2 $60|ANC:Y|Transp:Y|Spatial:N|Comfort:8h|Battery:40h|WearDetect:N|Multipoint:Y|Weight:254g|EQ:Y|Passive:Y|Case:N\n14.JLab JBuds Lux ANC $80|ANC:Y|Transp:Y|Spatial:Y|Comfort:6h|Battery:40h|WearDetect:N|Multipoint:Y|Weight:231g|EQ:Y|Passive:Y|Case:N\n15.JBL Tour One M2 $330|ANC:Y|Transp:Y|Spatial:Y|Comfort:2.5h|Battery:50h|WearDetect:Y|Multipoint:Y|Weight:279g|EQ:Y|Passive:Y|Case:Y\n16.Beats Studio Pro $350|ANC:Y|Transp:Y|Spatial:Y|Comfort:3.5h|Battery:24h|WearDetect:N|Multipoint:N|Weight:266g|EQ:N|Passive:N|Case:SoftCase\n17.Soundcore Space One $100|ANC:Y|Transp:Y|Spatial:N|Comfort:6h|Battery:40h|WearDetect:Y|Multipoint:Y|Weight:263g|EQ:Y|Passive:Y|Case:Bag\n18.Sony WHCH520 $70|ANC:N|Transp:N|Spatial:Y|Comfort:2h|Battery:50h|WearDetect:N|Multipoint:Y|Weight:144g|EQ:Y|Passive:N|Case:N\n19.JBL Tune 720 BT $90|ANC:N|Transp:Y|Spatial:N|Comfort:2h|Battery:76h|WearDetect:N|Multipoint:Y|Weight:221g|EQ:Y|Passive:Y|Case:N\n20.Beats Solo 4 $200|ANC:N|Transp:N|Spatial:Y|Comfort:1h|Battery:50h|WearDetect:N|Multipoint:N|Weight:218g|EQ:N|Passive:Y|Case:SoftCase\nKey: ANC=ActiveNoiseCancelling Transp=TransparentMode WearDetect=WearingDetection EQ=EQCustomization Passive=PassivePlayback\nBe conversational. Present tradeoffs factually. No superlatives. Suggest 1-2 options if asked, framed as based on what you described. Do not mention this is a study.";
-
-// ── State ──────────────────────────────────────────────────────────────────
+var HP_SP    = null;  // loaded at runtime from PROMPT_URL
 var HP_MSGS  = [];
 var HP_START = Date.now();
 var HP_SID   = 'P_' + Math.random().toString(36).substr(2, 8).toUpperCase();
 var HP_BUSY  = false;
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-function hpElapsed() {
-  return Math.round((Date.now() - HP_START) / 1000);
-}
+// Load the system prompt from GitHub Pages on page load
+(async function loadPrompt() {
+  var btn = document.getElementById('hp-send-btn');
+  var inp = document.getElementById('hp-textarea');
+  try {
+    var r = await fetch(PROMPT_URL);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    HP_SP = await r.text();
+    // Ready — enable the input
+    btn.disabled = false;
+    inp.disabled = false;
+    inp.placeholder = 'Type your message here...';
+  } catch(e) {
+    inp.placeholder = 'Failed to load assistant. Please refresh the page.';
+    console.error('Prompt load failed:', e);
+  }
+})();
+
+// Disable input until prompt is loaded
+document.getElementById('hp-send-btn').disabled = true;
+document.getElementById('hp-textarea').disabled = true;
+document.getElementById('hp-textarea').placeholder = 'Loading assistant...';
+
+function hpElapsed() { return Math.round((Date.now() - HP_START) / 1000); }
 
 function hpAppend(role, text) {
   var win    = document.getElementById('hp-chat-win');
@@ -91,7 +108,6 @@ function hpAppend(role, text) {
   win.scrollTop = win.scrollHeight;
 }
 
-// Save data to Qualtrics embedded data fields (silently fails outside Qualtrics)
 function hpSaveToQualtrics() {
   try {
     var transcript = HP_MSGS.map(function(m) {
@@ -103,14 +119,11 @@ function hpSaveToQualtrics() {
     Qualtrics.SurveyEngine.setEmbeddedData('hp_transcript',     transcript.substring(0, 20000));
     Qualtrics.SurveyEngine.setEmbeddedData('hp_session_id',     HP_SID);
     Qualtrics.SurveyEngine.setEmbeddedData('hp_condition',      'AI');
-  } catch(e) {
-    // Not inside Qualtrics — ignore
-  }
+  } catch(e) {}
 }
 
-// ── Main send function ─────────────────────────────────────────────────────
 async function hpSend() {
-  if (HP_BUSY) return;
+  if (HP_BUSY || !HP_SP) return;
   var inp  = document.getElementById('hp-textarea');
   var btn  = document.getElementById('hp-send-btn');
   var text = inp ? inp.value.trim() : '';
@@ -129,11 +142,9 @@ async function hpSend() {
   document.getElementById('hp-chat-win').scrollTop = 99999;
 
   try {
-    // Call the Vercel proxy (which holds the API key securely server-side)
     var apiMsgs = HP_MSGS.map(function(m) {
       return { role: m.role, content: m.content };
     });
-
     var resp = await fetch(PROXY_URL, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -146,7 +157,6 @@ async function hpSend() {
     });
 
     var data = await resp.json();
-
     if (!resp.ok) {
       if (tr) tr.className = 'hp-typing-row';
       hpAppend('ai', 'API error ' + resp.status + ': ' + JSON.stringify(data));
@@ -175,10 +185,7 @@ async function hpSend() {
   }
 }
 
-// Save on page unload (catches participants who navigate away)
 window.addEventListener('beforeunload', hpSaveToQualtrics);
-
-// Periodic autosave every 30 seconds
 setInterval(hpSaveToQualtrics, 30000);
 </script>
 </body>
