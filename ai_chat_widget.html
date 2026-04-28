@@ -126,11 +126,16 @@ function hpSaveToQualtrics() {
       return '[' + (m.role === 'user' ? 'USER' : 'ASST') + ' +' + m.elapsed + 's] ' + m.content;
     }).join('\n');
     var userMsgs = HP_MSGS.filter(function(m) { return m.role === 'user'; }).length;
-    Qualtrics.SurveyEngine.setEmbeddedData('hp_messages_sent',  userMsgs);
-    Qualtrics.SurveyEngine.setEmbeddedData('hp_total_time_sec', hpElapsed());
-    Qualtrics.SurveyEngine.setEmbeddedData('hp_transcript',     transcript.substring(0, 20000));
-    Qualtrics.SurveyEngine.setEmbeddedData('hp_session_id',     HP_SID);
-    Qualtrics.SurveyEngine.setEmbeddedData('hp_condition',      'AI');
+
+    // postMessage sends data to the Qualtrics parent page across the iframe boundary
+    window.parent.postMessage({
+      type:            'hp_chat_log',
+      hp_messages_sent:  userMsgs,
+      hp_total_time_sec: hpElapsed(),
+      hp_transcript:     transcript.substring(0, 20000),
+      hp_session_id:     HP_SID,
+      hp_condition:      'AI'
+    }, '*');
   } catch(e) {}
 }
 
