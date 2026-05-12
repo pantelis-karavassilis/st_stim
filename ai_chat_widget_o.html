@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Assistant</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#fff}
+#hp-study-wrap{font-family:Arial,sans-serif;font-size:14px;color:#333;background:#fff;border:1px solid #ccc;max-width:100%}
+#hp-study-wrap .hp-top{border-bottom:2px solid #0076d1;padding:14px 20px;font-size:15px;font-weight:bold}
+#hp-study-wrap .hp-chat-win{margin:0 20px;border:1px solid #ccc;border-bottom:none;height:440px;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px}
+#hp-study-wrap .hp-msg-row{display:flex;flex-direction:column;gap:3px}
+#hp-study-wrap .hp-msg-row.user{align-items:flex-end}
+#hp-study-wrap .hp-msg-row.ai{align-items:flex-start}
+#hp-study-wrap .hp-msg-lbl{font-size:11px;color:#888}
+#hp-study-wrap .hp-bubble{max-width:82%;padding:9px 13px;font-size:14px;line-height:1.6;border:1px solid #ccc;background:#fff;color:#333;white-space:pre-wrap}
+#hp-study-wrap .hp-msg-row.user .hp-bubble{background:#e8f0fb;border-color:#b3c9ef}
+#hp-study-wrap .hp-typing-row{display:none;flex-direction:column;gap:3px}
+#hp-study-wrap .hp-typing-row.visible{display:flex}
+#hp-study-wrap .hp-typing-dots{border:1px solid #ccc;background:#fff;padding:10px 14px;display:flex;gap:5px;align-items:center;width:fit-content}
+#hp-study-wrap .hp-dot{width:6px;height:6px;border-radius:50%;background:#aaa;animation:hpblink 1.2s infinite}
+#hp-study-wrap .hp-dot:nth-child(2){animation-delay:.2s}
+#hp-study-wrap .hp-dot:nth-child(3){animation-delay:.4s}
+@keyframes hpblink{0%,80%,100%{opacity:.3}40%{opacity:1}}
+#hp-study-wrap .hp-input-area{padding:12px 20px 16px;margin:0 20px;display:flex;gap:8px;align-items:flex-end;border:1px solid #ccc;border-top:1px solid #e0e0e0}
+#hp-study-wrap .hp-textarea{flex:1;border:1px solid #aaa;padding:8px 10px;font-family:Arial,sans-serif;font-size:14px;color:#333;resize:none;outline:none;min-height:40px;max-height:100px}
+#hp-study-wrap .hp-textarea:focus{border-color:#0076d1}
+#hp-study-wrap .hp-send-btn{background:#0076d1;color:#fff;border:none;padding:9px 18px;font-size:14px;cursor:pointer;height:40px}
+#hp-study-wrap .hp-send-btn:hover{background:#005fa3}
+#hp-study-wrap .hp-send-btn:disabled{background:#aaa;cursor:not-allowed}
+</style>
+</head>
+<body>
+<div id="hp-study-wrap">
+  <div class="hp-top">AI Assistant</div>
+  <div class="hp-chat-win" id="hp-chat-win">
+    <div class="hp-msg-row ai">
+      <div class="hp-msg-lbl">Assistant</div>
+      <div class="hp-bubble">What can I help you with today?</div>
+    </div>
+    <div class="hp-typing-row" id="hp-typing-row">
+      <div class="hp-msg-lbl">Assistant</div>
+      <div class="hp-typing-dots">
+        <div class="hp-dot">&nbsp;</div>
+        <div class="hp-dot">&nbsp;</div>
+        <div class="hp-dot">&nbsp;</div>
+      </div>
+    </div>
+  </div>
+  <div class="hp-input-area">
+    <textarea class="hp-textarea" id="hp-textarea" placeholder="Type your message here..." rows="1"></textarea>
+    <button class="hp-send-btn" id="hp-send-btn" onclick="hpSend()">Send</button>
+  </div>
+</div>
+
+<script>
+var PROXY_URL   = 'https://hp-proxy.vercel.app/api/chat';
+var PROMPT_URL  = 'https://pantelis-karavassilis.github.io/st_stim/system_prompt_o.txt';
+
+var HP_SP    = null;  // loaded at runtime from PROMPT_URL
+var HP_MSGS  = [];
+var HP_START = Date.now();
+var HP_SID   = 'P_' + Math.random().toString(36).substr(2, 8).toUpperCase();
+var HP_BUSY  = false;
+
+// Load the system prompt from GitHub Pages on page load
+(async function loadPrompt() {
+  var btn = document.getElementById('hp-send-btn');
+  var inp = document.getElementById('hp-textarea');
+  try {
+    var r = await fetch(PROMPT_URL);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    HP_SP = await r.text();
+    // Ready — enable the input
+    btn.disabled = false;
+    inp.disabled = false;
+    inp.placeholder = 'Type your message here...';
+  } catch(e) {
+    inp.placeholder = 'Failed to load assistant. Please refresh the page.';
+    console.error('Prompt load failed:', e);
+  }
+})();
+
+// Disable input until prompt is loaded
+var _btn = document.getElementById('hp-send-btn');
+var _inp = document.getElementById('hp-textarea');
+_btn.disabled = true;
+_inp.disabled = true;
+_inp.placeholder = 'Loading assistant...';
+
+// Attach event listeners properly (not inline) to avoid triggering send on resize
+_inp.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    hpSend();
+  }
+});
+_inp.addEventListener('input', function() {
+  _inp.style.height = 'auto';
+  _inp.style.height = Math.min(_inp.scrollHeight, 100) + 'px';
+});
+
+function hpElapsed() { return Math.round((Date.now() - HP_START) / 1000); }
+
+function hpAppend(role, text) {
+  var win    = document.getElementById('hp-chat-win');
+  var typing = document.getElementById('hp-typing-row');
+  var row    = document.createElement('div');
+  row.className = 'hp-msg-row ' + role;
+  var lbl = document.createElement('div');
+  lbl.className   = 'hp-msg-lbl';
+  lbl.textContent = role === 'user' ? 'You' : 'Assistant';
+  var bub = document.createElement('div');
+  bub.className   = 'hp-bubble';
+  bub.textContent = text;
+  row.appendChild(lbl);
+  row.appendChild(bub);
+  win.insertBefore(row, typing);
+  win.scrollTop = win.scrollHeight;
+}
+
+function hpSaveToQualtrics() {
+  try {
+    var transcript = HP_MSGS.map(function(m) {
+      return '[' + (m.role === 'user' ? 'USER' : 'ASST') + ' +' + m.elapsed + 's] ' + m.content;
+    }).join('\n');
+    var userMsgs = HP_MSGS.filter(function(m) { return m.role === 'user'; }).length;
+
+    // postMessage sends data to the Qualtrics parent page across the iframe boundary
+    window.parent.postMessage({
+      type:            'hp_chat_log',
+      hp_messages_sent:  userMsgs,
+      hp_total_time_sec: hpElapsed(),
+      hp_transcript:     transcript.substring(0, 20000),
+      hp_session_id:     HP_SID,
+      hp_condition:      'AI'
+    }, '*');
+  } catch(e) {}
+}
+
+async function hpSend() {
+  if (HP_BUSY || !HP_SP) return;
+  var inp  = document.getElementById('hp-textarea');
+  var btn  = document.getElementById('hp-send-btn');
+  var text = inp ? inp.value.trim() : '';
+  if (!text) return;
+
+  HP_BUSY = true;
+  HP_MSGS.push({ role: 'user', content: text, elapsed: hpElapsed() });
+  hpAppend('user', text);
+  inp.value = '';
+  inp.style.height = 'auto';
+  if (btn) btn.disabled = true;
+  if (inp) inp.disabled = true;
+
+  var tr = document.getElementById('hp-typing-row');
+  if (tr) tr.className = 'hp-typing-row visible';
+  document.getElementById('hp-chat-win').scrollTop = 99999;
+
+  try {
+    var apiMsgs = HP_MSGS.map(function(m) {
+      return { role: m.role, content: m.content };
+    });
+    var resp = await fetch(PROXY_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model:      'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system:     HP_SP,
+        messages:   apiMsgs
+      })
+    });
+
+    var data = await resp.json();
+    if (!resp.ok) {
+      if (tr) tr.className = 'hp-typing-row';
+      hpAppend('ai', 'API error ' + resp.status + ': ' + JSON.stringify(data));
+      return;
+    }
+    if (!data.content || !data.content[0]) {
+      if (tr) tr.className = 'hp-typing-row';
+      hpAppend('ai', 'Unexpected response: ' + JSON.stringify(data));
+      return;
+    }
+
+    var reply = data.content[0].text;
+    HP_MSGS.push({ role: 'assistant', content: reply, elapsed: hpElapsed() });
+    if (tr) tr.className = 'hp-typing-row';
+    hpAppend('ai', reply);
+    hpSaveToQualtrics();
+
+  } catch(e) {
+    if (tr) tr.className = 'hp-typing-row';
+    hpAppend('ai', 'Error: ' + e.message);
+  } finally {
+    HP_BUSY = false;
+    if (btn) btn.disabled = false;
+    if (inp) inp.disabled = false;
+    if (inp) inp.focus();
+  }
+}
+
+window.addEventListener('beforeunload', hpSaveToQualtrics);
+setInterval(hpSaveToQualtrics, 30000);
+</script>
+</body>
+</html>
